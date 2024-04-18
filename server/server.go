@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 
 	"net/http"
@@ -50,7 +51,7 @@ func New(opts Options) *Server {
 func (s *Server) Start() error {
 	s.setupRoutes()
 
-	fmt.Println("Starting on", s.address)
+	slog.Info("Starting the server", slog.String("address", s.address))
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("error starting server: %w", err)
 	}
@@ -59,7 +60,7 @@ func (s *Server) Start() error {
 
 // Stop the Server gracefully within the timeout.
 func (s *Server) Stop() error {
-	fmt.Println("Stopping")
+	slog.Info("Stopping")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
