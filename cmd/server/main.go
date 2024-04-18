@@ -57,6 +57,7 @@ func start() int {
 	})
 
 	if err := eg.Wait(); err != nil {
+
 		return 1
 
 	}
