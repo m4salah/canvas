@@ -1,4 +1,8 @@
-.PHONY: cover start test test-integration
+.PHONY: build cover start test test-integration
+
+# build docker command
+build:
+	docker build -t canvas .
 
 cover:
 	go tool cover -html=cover.out
@@ -11,3 +15,4 @@ test:
 
 test-integration:
 	go test -coverprofile=cover.out -p 1 ./...
+
