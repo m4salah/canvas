@@ -1,10 +1,12 @@
-.PHONY: build cover start test test-integration deploy
+.PHONY: build cover start test test-integration deploy build-docker
 
 export image := `aws lightsail get-container-images --service-name canvas | jq -r '.containerImages[0].image'`
 
 # build docker command
 build:
-	docker build -t canvas .
+	@echo "Building..."
+	@templ generate
+	@go build -o main cmd/server/main.go
 
 cover:
 	go tool cover -html=cover.out
@@ -18,6 +20,11 @@ test:
 test-integration:
 	go test -coverprofile=cover.out -p 1 ./...
 
+watch:
+	air
+
+build-docker:
+	docker build -t canvas .
 deploy:
 	aws lightsail push-container-image --service-name canvas --label app --image canvas
 	aws lightsail create-container-service-deployment --service-name canvas \
