@@ -8,12 +8,14 @@ templ Base(title string) {
 			<title>{ title }</title>
 			<!-- tailwind css -->
 			<link href="/static/css/tailwind.css" rel="stylesheet"/>
+			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 		</head>
 		<body>
-			<nav>
+			<nav class="bg-white shadow">
 				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div class="flex items-center space-x-4 h-16">
+					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 						<div class="flex-shrink-0">
+							<i class="fa-light fa-earth-americas"></i>
 							<a class="text-lg font-medium hover:text-indigo-900 text-indigo-700">Home</a>
 						</div>
 					</div>
