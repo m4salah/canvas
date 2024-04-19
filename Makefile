@@ -23,9 +23,8 @@ test-integration:
 watch:
 	air
 
-build-docker:
-	docker build -t canvas .
 deploy:
+	docker build -t canvas .
 	aws lightsail push-container-image --service-name canvas --label app --image canvas
 	aws lightsail create-container-service-deployment --service-name canvas \
 		--containers '{"app":{"image":"'$(image)'","environment":{"HOST":"","PORT":"8080","LOG_ENV":"production"},"ports":{"8080":"HTTP"}}}' \
