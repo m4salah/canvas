@@ -10,7 +10,18 @@ templ Base(title string) {
 			<link href="/static/css/tailwind.css" rel="stylesheet"/>
 		</head>
 		<body>
-			{ children... }
+			<nav>
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div class="flex items-center space-x-4 h-16">
+						<div class="flex-shrink-0">
+							<a class="text-lg font-medium hover:text-indigo-900 text-indigo-700">Home</a>
+						</div>
+					</div>
+				</div>
+			</nav>
+			<div class="prose lg:prose-lg xl:prose-xl prose-indigo">
+				{ children... }
+			</div>
 		</body>
 	</html>
 }
