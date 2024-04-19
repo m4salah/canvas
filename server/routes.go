@@ -1,8 +1,11 @@
 package server
 
-import "canvas/handlers"
+import (
+	"canvas/handlers"
+)
 
 func (s *Server) setupRoutes() {
 	handlers.Static(s.mux)
 	handlers.Health(s.mux)
+	handlers.Home(s.mux)
 }

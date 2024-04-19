@@ -1,0 +1,16 @@
+package layout
+
+templ Base(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<title>{ title }</title>
+			<!-- tailwind css -->
+			<link href="/static/css/tailwind.css" rel="stylesheet"/>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
