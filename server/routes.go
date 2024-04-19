@@ -14,10 +14,10 @@ func (s signupperMock) SignupForNewsletter(ctx context.Context, email model.Emai
 
 func (s *Server) setupRoutes() {
 	handlers.Static(s.mux)
-	handlers.Health(s.mux)
+	handlers.Health(s.mux, s.database)
 	handlers.Home(s.mux)
 
 	// newsletter routes
-	handlers.NewsletterSignup(s.mux, signupperMock{})
+	handlers.NewsletterSignup(s.mux, s.database)
 	handlers.NewsletterThanks(s.mux)
 }

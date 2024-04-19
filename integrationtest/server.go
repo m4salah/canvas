@@ -14,11 +14,11 @@ import (
 //	cleanup := CreateServer()
 //	defer cleanup()
 func CreateServer() func() {
-
+	db, cleanupDB := CreateDatabase()
 	s := server.New(server.Options{
-
-		Host: "localhost",
-		Port: 8081,
+		Database: db,
+		Host:     "localhost",
+		Port:     8081,
 	})
 
 	go func() {
@@ -41,6 +41,7 @@ func CreateServer() func() {
 		if err := s.Stop(); err != nil {
 			panic(err)
 		}
+		cleanupDB()
 	}
 }
 

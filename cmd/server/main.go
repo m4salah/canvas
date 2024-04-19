@@ -4,14 +4,16 @@ package main
 
 import (
 	"canvas/server"
+	"canvas/storage"
 	"canvas/util"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
+	"time"
 
+	"github.com/maragudk/env"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -24,14 +26,17 @@ func main() {
 }
 
 func start() int {
-	logEnv := getStringOrDefault("LOG_ENV", "development")
+	_ = env.Load()
+	logEnv := env.GetStringOrDefault("LOG_ENV", "development")
 	util.InitializeSlog(logEnv, release)
-	host := getStringOrDefault("HOST", "localhost")
-	port := getIntOrDefault("PORT", 8080)
+
+	host := env.GetStringOrDefault("HOST", "localhost")
+	port := env.GetIntOrDefault("PORT", 8080)
 
 	s := server.New(server.Options{
-		Host: host,
-		Port: port,
+		Database: createDatabase(),
+		Host:     host,
+		Port:     port,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -64,24 +69,15 @@ func start() int {
 	return 0
 }
 
-func getStringOrDefault(name, defaultV string) string {
-	v, ok := os.LookupEnv(name)
-	if !ok {
-		return defaultV
-	}
-	return v
-}
-
-func getIntOrDefault(name string, defaultV int) int {
-
-	v, ok := os.LookupEnv(name)
-	if !ok {
-		return defaultV
-	}
-	vAsInt, err := strconv.Atoi(v)
-	if err != nil {
-		return defaultV
-	}
-	return vAsInt
-
+func createDatabase() *storage.Database {
+	return storage.NewDatabase(storage.NewDatabaseOptions{
+		Host:                  env.GetStringOrDefault("DB_HOST", "localhost"),
+		Port:                  env.GetIntOrDefault("DB_PORT", 5432),
+		User:                  env.GetStringOrDefault("DB_USER", ""),
+		Password:              env.GetStringOrDefault("DB_PASSWORD", ""),
+		Name:                  env.GetStringOrDefault("DB_NAME", ""),
+		MaxOpenConnections:    env.GetIntOrDefault("DB_MAX_OPEN_CONNECTIONS", 10),
+		MaxIdleConnections:    env.GetIntOrDefault("DB_MAX_IDLE_CONNECTIONS", 10),
+		ConnectionMaxLifetime: env.GetDurationOrDefault("DB_CONNECTION_MAX_LIFETIME", time.Hour),
+	})
 }
