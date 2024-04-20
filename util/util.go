@@ -1,8 +1,14 @@
 package util
 
 import (
+	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"reflect"
+
+	"github.com/caarlos0/env/v11"
+	dotenv "github.com/maragudk/env"
 )
 
 // InitializeSlog
@@ -21,4 +27,28 @@ func InitializeSlog(env, release string) {
 	}
 	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
+}
+
+// custom parser for parsing string into net.Addr
+// compatible with env.ParserFunc
+func parseURL(value string) (any, error) {
+	addr, err := url.Parse(value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse url: %w", err)
+	}
+	return *addr, nil
+}
+
+// Builds config - error handling omitted fore brevity
+func LoadConfig[Config any](c *Config) error {
+	// Loading the environment variables from '.env' file.
+	// ignore the error because on the server we will use the env variables from the OS Environment
+	_ = dotenv.Load()
+
+	return env.ParseWithOptions(
+		c,
+		env.Options{RequiredIfNoDef: true, FuncMap: map[reflect.Type]env.ParserFunc{
+			reflect.TypeOf(url.URL{}): parseURL,
+		}},
+	)
 }
