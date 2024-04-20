@@ -3,12 +3,15 @@
 package main
 
 import (
+	"canvas/jobs"
 	"canvas/messaging"
 	"canvas/server"
 	"canvas/storage"
 	"canvas/util"
 	"context"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -47,13 +50,18 @@ func start() int {
 		slog.Info("Error creating AWS config", err)
 		return 1
 	}
+	queue := createQueue(awsConfig)
 	s := server.New(server.Options{
-		Database: createDatabase(),
-		Host:     host,
-		Port:     port,
-		Queue:    createQueue(awsConfig),
+		Database:      createDatabase(),
+		Host:          host,
+		Port:          port,
+		Queue:         queue,
+		AdminPassword: env.GetStringOrDefault("ADMIN_PASSWORD", "eyDawVH9LLZtaG2q"),
 	})
-
+	r := jobs.NewRunner(jobs.NewRunnerOptions{
+		Emailer: createEmailer(host, port),
+		Queue:   queue,
+	})
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 	eg, ctx := errgroup.WithContext(ctx)
@@ -63,6 +71,11 @@ func start() int {
 			slog.Error("Error starting server", err)
 			return err
 		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		r.Start(ctx)
 		return nil
 	})
 
@@ -131,5 +144,25 @@ func createQueue(awsConfig aws.Config) *messaging.Queue {
 		Config:   awsConfig,
 		Name:     env.GetStringOrDefault("QUEUE_NAME", "jobs"),
 		WaitTime: env.GetDurationOrDefault("QUEUE_WAIT_TIME", 20*time.Second),
+	})
+}
+
+func createEmailer(host string, port int) *messaging.Emailer {
+	baseURL, err := url.Parse(env.GetStringOrDefault(
+		"BASE_URL",
+		fmt.Sprintf("http://%v:%v", host, port),
+	))
+	if err != nil {
+		slog.Error("BASE_URL is not valid url", "error", err)
+	}
+	return messaging.NewEmailer(messaging.NewEmailerOptions{
+		BaseURL:            baseURL,
+		MarketingEmailName: env.GetStringOrDefault("MARKETING_EMAIL_NAME", "Canvas bot"),
+		MarketingEmailAddress: env.GetStringOrDefault("MARKETING_EMAIL_ADDRESS",
+			"bot@marketing.example.com"),
+		Token:                  env.GetStringOrDefault("POSTMARK_TOKEN", ""),
+		TransactionalEmailName: env.GetStringOrDefault("TRANSACTIONAL_EMAIL_NAME", "Canvas bot"),
+		TransactionalEmailAddress: env.GetStringOrDefault("TRANSACTIONAL_EMAIL_ADDRESS",
+			"bot@transactional.example.com"),
 	})
 }

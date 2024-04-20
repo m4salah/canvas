@@ -19,28 +19,31 @@ import (
 )
 
 type Server struct {
-	address  string
-	database *storage.Database
-	mux      chi.Router
-	queue    *messaging.Queue
-	server   *http.Server
+	address       string
+	adminPassword string
+	database      *storage.Database
+	mux           chi.Router
+	queue         *messaging.Queue
+	server        *http.Server
 }
 
 type Options struct {
-	Database *storage.Database
-	Host     string
-	Port     int
-	Queue    *messaging.Queue
+	Database      *storage.Database
+	Host          string
+	Port          int
+	Queue         *messaging.Queue
+	AdminPassword string
 }
 
 func New(opts Options) *Server {
 	address := net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port))
 	mux := chi.NewMux()
 	return &Server{
-		address:  address,
-		mux:      mux,
-		database: opts.Database,
-		queue:    opts.Queue,
+		address:       address,
+		mux:           mux,
+		database:      opts.Database,
+		adminPassword: opts.AdminPassword,
+		queue:         opts.Queue,
 		server: &http.Server{
 			Addr:              address,
 			Handler:           mux,
