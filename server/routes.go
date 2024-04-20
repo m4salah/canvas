@@ -18,6 +18,6 @@ func (s *Server) setupRoutes() {
 	handlers.Home(s.mux)
 
 	// newsletter routes
-	handlers.NewsletterSignup(s.mux, s.database)
+	handlers.NewsletterSignup(s.mux, s.database, s.queue)
 	handlers.NewsletterThanks(s.mux)
 }

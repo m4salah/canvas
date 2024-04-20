@@ -3,6 +3,7 @@
 package main
 
 import (
+	"canvas/messaging"
 	"canvas/server"
 	"canvas/storage"
 	"canvas/util"
@@ -13,6 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/smithy-go/logging"
 	"github.com/maragudk/env"
 	"golang.org/x/sync/errgroup"
 )
@@ -33,10 +38,20 @@ func start() int {
 	host := env.GetStringOrDefault("HOST", "localhost")
 	port := env.GetIntOrDefault("PORT", 8080)
 
+	awsConfig, err := config.LoadDefaultConfig(context.Background(),
+		config.WithLogger(createAWSLogAdapter()),
+		config.WithEndpointResolverWithOptions(createAWSEndpointResolver()),
+	)
+
+	if err != nil {
+		slog.Info("Error creating AWS config", err)
+		return 1
+	}
 	s := server.New(server.Options{
 		Database: createDatabase(),
 		Host:     host,
 		Port:     port,
+		Queue:    createQueue(awsConfig),
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -79,5 +94,42 @@ func createDatabase() *storage.Database {
 		MaxOpenConnections:    env.GetIntOrDefault("DB_MAX_OPEN_CONNECTIONS", 10),
 		MaxIdleConnections:    env.GetIntOrDefault("DB_MAX_IDLE_CONNECTIONS", 10),
 		ConnectionMaxLifetime: env.GetDurationOrDefault("DB_CONNECTION_MAX_LIFETIME", time.Hour),
+	})
+}
+
+func createAWSLogAdapter() logging.LoggerFunc {
+	return func(classification logging.Classification, format string, v ...interface{}) {
+		switch classification {
+		case logging.Debug:
+			slog.Debug(format, slog.Any("attr", v))
+		case logging.Warn:
+			slog.Warn(format, slog.Any("attr", v))
+		}
+	}
+}
+
+// createAWSEndpointResolver used for local development endpoints.
+// See https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/endpoints/
+func createAWSEndpointResolver() aws.EndpointResolverWithOptionsFunc {
+	sqsEndpointURL := env.GetStringOrDefault("SQS_ENDPOINT_URL", "")
+
+	return func(service, region string, opts ...any) (aws.Endpoint, error) {
+		if sqsEndpointURL != "" && service == sqs.ServiceID {
+			return aws.Endpoint{
+				URL: sqsEndpointURL,
+			}, nil
+		}
+		// Fallback to default endpoint
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+	}
+}
+
+// …
+
+func createQueue(awsConfig aws.Config) *messaging.Queue {
+	return messaging.NewQueue(messaging.NewQueueOptions{
+		Config:   awsConfig,
+		Name:     env.GetStringOrDefault("QUEUE_NAME", "jobs"),
+		WaitTime: env.GetDurationOrDefault("QUEUE_WAIT_TIME", 20*time.Second),
 	})
 }
