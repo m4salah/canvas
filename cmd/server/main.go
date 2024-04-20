@@ -7,11 +7,10 @@ import (
 	"canvas/messaging"
 	"canvas/server"
 	"canvas/storage"
+	"canvas/types"
 	"canvas/util"
 	"context"
-	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,17 +28,17 @@ import (
 // Used for logging and error reporting.
 var release string
 
+var envConfig types.Config
+
 func main() {
 	os.Exit(start())
 }
 
 func start() int {
-	_ = env.Load()
-	logEnv := env.GetStringOrDefault("LOG_ENV", "development")
-	util.InitializeSlog(logEnv, release)
-
-	host := env.GetStringOrDefault("HOST", "localhost")
-	port := env.GetIntOrDefault("PORT", 8080)
+	if err := util.LoadConfig(&envConfig); err != nil {
+		panic(err)
+	}
+	util.InitializeSlog(envConfig.LogEnv, release)
 
 	awsConfig, err := config.LoadDefaultConfig(context.Background(),
 		config.WithLogger(createAWSLogAdapter()),
@@ -53,13 +52,13 @@ func start() int {
 	queue := createQueue(awsConfig)
 	s := server.New(server.Options{
 		Database:      createDatabase(),
-		Host:          host,
-		Port:          port,
+		Host:          envConfig.Host,
+		Port:          envConfig.Port,
 		Queue:         queue,
-		AdminPassword: env.GetStringOrDefault("ADMIN_PASSWORD", "eyDawVH9LLZtaG2q"),
+		AdminPassword: envConfig.AdminPassword,
 	})
 	r := jobs.NewRunner(jobs.NewRunnerOptions{
-		Emailer: createEmailer(host, port),
+		Emailer: createEmailer(),
 		Queue:   queue,
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -99,14 +98,14 @@ func start() int {
 
 func createDatabase() *storage.Database {
 	return storage.NewDatabase(storage.NewDatabaseOptions{
-		Host:                  env.GetStringOrDefault("DB_HOST", "localhost"),
-		Port:                  env.GetIntOrDefault("DB_PORT", 5432),
-		User:                  env.GetStringOrDefault("DB_USER", ""),
-		Password:              env.GetStringOrDefault("DB_PASSWORD", ""),
-		Name:                  env.GetStringOrDefault("DB_NAME", ""),
-		MaxOpenConnections:    env.GetIntOrDefault("DB_MAX_OPEN_CONNECTIONS", 10),
-		MaxIdleConnections:    env.GetIntOrDefault("DB_MAX_IDLE_CONNECTIONS", 10),
-		ConnectionMaxLifetime: env.GetDurationOrDefault("DB_CONNECTION_MAX_LIFETIME", time.Hour),
+		Host:                  envConfig.DBHost,
+		Port:                  envConfig.DBPort,
+		User:                  envConfig.DBUser,
+		Password:              envConfig.DBPassword,
+		Name:                  envConfig.DBName,
+		MaxOpenConnections:    envConfig.DBMaxOpenConnections,
+		MaxIdleConnections:    envConfig.DBMaxIdleConnections,
+		ConnectionMaxLifetime: envConfig.DBConnectionMaxLifetime,
 	})
 }
 
@@ -147,16 +146,9 @@ func createQueue(awsConfig aws.Config) *messaging.Queue {
 	})
 }
 
-func createEmailer(host string, port int) *messaging.Emailer {
-	baseURL, err := url.Parse(env.GetStringOrDefault(
-		"BASE_URL",
-		fmt.Sprintf("http://%v:%v", host, port),
-	))
-	if err != nil {
-		slog.Error("BASE_URL is not valid url", "error", err)
-	}
+func createEmailer() *messaging.Emailer {
 	return messaging.NewEmailer(messaging.NewEmailerOptions{
-		BaseURL:            baseURL,
+		BaseURL:            &envConfig.BaseURL,
 		MarketingEmailName: env.GetStringOrDefault("MARKETING_EMAIL_NAME", "Canvas bot"),
 		MarketingEmailAddress: env.GetStringOrDefault("MARKETING_EMAIL_ADDRESS",
 			"bot@marketing.example.com"),
