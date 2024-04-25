@@ -26,7 +26,7 @@ func (s confirmerMock) ConfirmNewsletterSignup(
 }
 
 func (s *Server) setupRoutes() {
-	handlers.Static(s.mux)
+	handlers.Public(s.mux)
 	handlers.Health(s.mux, s.database)
 	handlers.Home(s.mux)
 
