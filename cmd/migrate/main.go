@@ -41,7 +41,7 @@ func start() int {
 	})
 
 	if err := db.Connect(); err != nil {
-		slog.Error("Error connection to database", err)
+		slog.Error("Error connection to database", util.ErrAttr(err))
 		return 1
 	}
 
@@ -59,7 +59,7 @@ func start() int {
 		return 1
 	}
 	if err != nil {
-		slog.Error("Error migrating", err)
+		slog.Error("Error migrating", util.ErrAttr(err))
 		return 1
 	}
 

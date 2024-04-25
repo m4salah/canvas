@@ -29,6 +29,12 @@ func InitializeSlog(env, release string) {
 	slog.SetDefault(logger)
 }
 
+// ErrAttr return slog.Attr of Any
+// The key is error, and is the err
+func ErrAttr(err error) slog.Attr {
+	return slog.Any("error", err)
+}
+
 // custom parser for parsing string into net.Addr
 // compatible with env.ParserFunc
 func parseURL(value string) (any, error) {

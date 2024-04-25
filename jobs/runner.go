@@ -24,7 +24,6 @@ type NewRunnerOptions struct {
 }
 
 func NewRunner(opts NewRunnerOptions) *Runner {
-
 	return &Runner{
 		emailer: opts.Emailer,
 		jobs:    map[string]Func{},

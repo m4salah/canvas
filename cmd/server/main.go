@@ -31,22 +31,21 @@ var release string
 var envConfig types.Config
 
 func main() {
-	os.Exit(start())
-}
-
-func start() int {
 	if err := util.LoadConfig(&envConfig); err != nil {
 		panic(err)
 	}
 	util.InitializeSlog(envConfig.LogEnv, release)
+	os.Exit(start())
+}
 
+func start() int {
 	awsConfig, err := config.LoadDefaultConfig(context.Background(),
 		config.WithLogger(createAWSLogAdapter()),
 		config.WithEndpointResolverWithOptions(createAWSEndpointResolver()),
 	)
 
 	if err != nil {
-		slog.Info("Error creating AWS config", err)
+		slog.Error("Error creating AWS config", util.ErrAttr(err))
 		return 1
 	}
 	queue := createQueue(awsConfig)
@@ -67,7 +66,7 @@ func start() int {
 
 	eg.Go(func() error {
 		if err := s.Start(); err != nil {
-			slog.Error("Error starting server", err)
+			slog.Error("Error starting server", util.ErrAttr(err))
 			return err
 		}
 		return nil
@@ -82,7 +81,7 @@ func start() int {
 
 	eg.Go(func() error {
 		if err := s.Stop(); err != nil {
-			slog.Error("Error stopping server", err)
+			slog.Error("Error stopping server", util.ErrAttr(err))
 			return err
 		}
 		return nil
