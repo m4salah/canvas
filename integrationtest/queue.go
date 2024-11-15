@@ -16,6 +16,7 @@ import (
 //	defer cleanup()
 //	…
 func CreateQueue() (*messaging.Queue, func()) {
+	// load the test env variables.
 	env.MustLoad("../.env-test")
 
 	name := env.GetStringOrDefault("QUEUE_NAME", "jobs")
@@ -27,6 +28,7 @@ func CreateQueue() (*messaging.Queue, func()) {
 	createQueueOutput, err := queue.Client.CreateQueue(context.Background(), &sqs.CreateQueueInput{
 		QueueName: &name,
 	})
+
 	if err != nil {
 		panic(err)
 	}

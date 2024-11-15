@@ -48,7 +48,11 @@ func start() int {
 		slog.Error("Error creating AWS config", util.ErrAttr(err))
 		return 1
 	}
+
+	// create a new queue
 	queue := createQueue(awsConfig)
+
+	// create the server
 	s := server.New(server.Options{
 		Database:      createDatabase(),
 		Host:          envConfig.Host,
@@ -56,6 +60,8 @@ func start() int {
 		Queue:         queue,
 		AdminPassword: envConfig.AdminPassword,
 	})
+
+	// create the jobs runner
 	r := jobs.NewRunner(jobs.NewRunnerOptions{
 		Emailer: createEmailer(),
 		Queue:   queue,
@@ -64,6 +70,7 @@ func start() int {
 	defer stop()
 	eg, ctx := errgroup.WithContext(ctx)
 
+	// spawn the server on it's goroutine
 	eg.Go(func() error {
 		if err := s.Start(); err != nil {
 			slog.Error("Error starting server", util.ErrAttr(err))
@@ -72,6 +79,7 @@ func start() int {
 		return nil
 	})
 
+	// spawn the job runner in a another goroutine
 	eg.Go(func() error {
 		r.Start(ctx)
 		return nil
@@ -79,6 +87,7 @@ func start() int {
 
 	<-ctx.Done()
 
+	// gracefully shutdown the server
 	eg.Go(func() error {
 		if err := s.Stop(); err != nil {
 			slog.Error("Error stopping server", util.ErrAttr(err))
@@ -87,11 +96,13 @@ func start() int {
 		return nil
 	})
 
+	// wait on all goroutine in error group to finish
+	// and if there is an error exit with non zero status (fail)
 	if err := eg.Wait(); err != nil {
-
 		return 1
-
 	}
+
+	// otherwise return zero status (success)
 	return 0
 }
 

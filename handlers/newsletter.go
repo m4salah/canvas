@@ -10,16 +10,14 @@ import (
 	"canvas/views"
 )
 
+// signupper interface
 type signupper interface {
 	SignupForNewsletter(ctx context.Context, email model.Email) (string, error)
 }
 
+// sender interface
 type sender interface {
 	Send(ctx context.Context, m model.Message) error
-}
-
-type NewsletterSignupRequest struct {
-	Email model.Email `json:"email"`
 }
 
 func NewsletterSignup(mux chi.Router, s signupper, q sender) {
@@ -37,6 +35,7 @@ func NewsletterSignup(mux chi.Router, s signupper, q sender) {
 			return
 		}
 
+		// send the message to the job queue.
 		err = q.Send(r.Context(), model.Message{
 			"job":   "confirmation_email",
 			"email": email.String(),

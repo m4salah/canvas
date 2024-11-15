@@ -9,6 +9,7 @@ import (
 
 	"canvas/messaging"
 	"canvas/model"
+	"canvas/util"
 )
 
 // Runner runs jobs.
@@ -106,7 +107,7 @@ func (r *Runner) receiveAndRun(ctx context.Context, wg *sync.WaitGroup) {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if err := r.queue.Delete(deleteCtx, receiptID); err != nil {
-			log.Info("Error deleting message, job will be repeated", err)
+			log.Error("Error deleting message, job will be repeated", util.ErrAttr(err))
 		}
 	}()
 }
