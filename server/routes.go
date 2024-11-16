@@ -26,6 +26,7 @@ func (s confirmerMock) ConfirmNewsletterSignup(
 }
 
 func (s *Server) setupRoutes() {
+	s.mux.Use(handlers.AddMetrics(s.metrics))
 	handlers.Public(s.mux)
 	handlers.Health(s.mux, s.database)
 	handlers.Home(s.mux)
@@ -43,4 +44,10 @@ func (s *Server) setupRoutes() {
 		handlers.MigrateTo(r, s.database)
 		handlers.MigrateUp(r, s.database)
 	})
+
+	metricsAuth := middleware.BasicAuth(
+		"metrics",
+		map[string]string{"prometheus": s.metricsPassword},
+	)
+	handlers.Metrics(s.mux.With(metricsAuth), s.metrics)
 }

@@ -21,6 +21,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/smithy-go/logging"
 	"github.com/maragudk/env"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -39,6 +41,11 @@ func main() {
 }
 
 func start() int {
+
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	registry.MustRegister(collectors.NewGoCollector())
+
 	awsConfig, err := config.LoadDefaultConfig(context.Background(),
 		config.WithLogger(createAWSLogAdapter()),
 		config.WithEndpointResolverWithOptions(createAWSEndpointResolver()),
@@ -51,20 +58,28 @@ func start() int {
 
 	// create a new queue
 	queue := createQueue(awsConfig)
+	db := createDatabase(registry)
+	if err := db.Connect(); err != nil {
+		slog.Info("Error connecting to database", util.ErrAttr(err))
+		return 1
+	}
 
 	// create the server
 	s := server.New(server.Options{
-		Database:      createDatabase(),
-		Host:          envConfig.Host,
-		Port:          envConfig.Port,
-		Queue:         queue,
-		AdminPassword: envConfig.AdminPassword,
+		Database:        db,
+		Host:            envConfig.Host,
+		Port:            envConfig.Port,
+		Queue:           queue,
+		AdminPassword:   envConfig.AdminPassword,
+		MetricsPassword: env.GetStringOrDefault("METRICS_PASSWORD", "12345678"),
+		Metrics:         registry,
 	})
 
 	// create the jobs runner
 	r := jobs.NewRunner(jobs.NewRunnerOptions{
 		Emailer: createEmailer(),
 		Queue:   queue,
+		Metrics: registry,
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -106,7 +121,7 @@ func start() int {
 	return 0
 }
 
-func createDatabase() *storage.Database {
+func createDatabase(registry *prometheus.Registry) *storage.Database {
 	return storage.NewDatabase(storage.NewDatabaseOptions{
 		Host:                  envConfig.DBHost,
 		Port:                  envConfig.DBPort,
@@ -116,6 +131,7 @@ func createDatabase() *storage.Database {
 		MaxOpenConnections:    envConfig.DBMaxOpenConnections,
 		MaxIdleConnections:    envConfig.DBMaxIdleConnections,
 		ConnectionMaxLifetime: envConfig.DBConnectionMaxLifetime,
+		Metrics:               registry,
 	})
 }
 

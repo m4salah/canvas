@@ -12,6 +12,8 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/maragudk/migrate"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 // Database is the relational storage abstraction.
@@ -26,6 +28,7 @@ type Database struct {
 	maxIdleConnections    int
 	connectionMaxLifetime time.Duration
 	connectionMaxIdleTime time.Duration
+	metrics               *prometheus.Registry
 }
 
 // NewDatabaseOptions for NewDatabase.
@@ -39,11 +42,15 @@ type NewDatabaseOptions struct {
 	MaxIdleConnections    int
 	ConnectionMaxLifetime time.Duration
 	ConnectionMaxIdleTime time.Duration
+	Metrics               *prometheus.Registry
 }
 
 // NewDatabase with the given options.
 // If no logger is provided, logs are discarded.
 func NewDatabase(opts NewDatabaseOptions) *Database {
+	if opts.Metrics == nil {
+		opts.Metrics = prometheus.NewRegistry()
+	}
 	return &Database{
 		host:                  opts.Host,
 		port:                  opts.Port,
@@ -54,6 +61,7 @@ func NewDatabase(opts NewDatabaseOptions) *Database {
 		maxIdleConnections:    opts.MaxIdleConnections,
 		connectionMaxLifetime: opts.ConnectionMaxLifetime,
 		connectionMaxIdleTime: opts.ConnectionMaxIdleTime,
+		metrics:               opts.Metrics,
 	}
 }
 
@@ -80,6 +88,7 @@ func (d *Database) Connect() error {
 	d.DB.SetConnMaxLifetime(d.connectionMaxLifetime)
 	d.DB.SetConnMaxIdleTime(d.connectionMaxIdleTime)
 
+	d.metrics.MustRegister(collectors.NewDBStatsCollector(d.DB.DB, d.name))
 	return nil
 }
 
